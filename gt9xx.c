@@ -397,6 +397,11 @@ static u8 gtp_get_points(struct goodix_ts_data *ts,
 		points[i].w = coor_data[5] | (coor_data[6] << 8);
 		/* if pen hover points[].p must set to zero */
 		points[i].p = coor_data[5] | (coor_data[6] << 8);
+		if (ts->pdata->mirror_x)
+			points[i].x = ts->pdata->abs_size_x - points[i].x;
+
+		if (ts->pdata->mirror_y)
+			points[i].y = ts->pdata->abs_size_y - points[i].y;
 
 		if (ts->pdata->swap_x2y)
 			GTP_SWAP(points[i].x, points[i].y);
@@ -1686,6 +1691,14 @@ static int gtp_parse_dt(struct device *dev,
 	of_property_read_u32(np, "goodix,swap-x2y", &pdata->swap_x2y);
 	if (pdata->swap_x2y)
 		dev_info(dev, "swap-x2y enabled\n");
+
+	of_property_read_u32(np, "goodix,mirror-x", &pdata->mirror_x);
+	if (pdata->mirror_x)
+		dev_info(dev, "mirror_x enabled\n");
+
+	of_property_read_u32(np, "goodix,mirror-y", &pdata->mirror_y);
+	if (pdata->mirror_y)
+		dev_info(dev, "mirror_y enabled\n");
 
 	of_property_read_u32(np, "goodix,slide-wakeup", &pdata->slide_wakeup);
 	if (pdata->slide_wakeup)
