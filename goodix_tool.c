@@ -41,7 +41,7 @@ struct st_cmd_head {
 	u8	res[3];		/*reserved*/
 	u8	*data; };	/*data pointer*/
 #pragma pack()
-struct st_cmd_head cmd_head;
+static struct st_cmd_head cmd_head;
 
 static struct i2c_client *gt_client;
 static struct proc_dir_entry *goodix_proc_entry;
