@@ -641,11 +641,20 @@ static void gtp_polling_work(struct work_struct *work)
     schedule_delayed_work(&ts->polling_work, msecs_to_jiffies(10));
 }
 
+static void gtp_interrupt_work(struct work_struct *work)
+{
+	struct goodix_ts_data *ts = container_of(work, struct goodix_ts_data,
+						 interrupt_work);
+	gtp_work_func(ts);
+}
+
 static irqreturn_t gtp_irq_handler(int irq, void *dev_id)
 {
 	struct goodix_ts_data *ts = dev_id;
 
 	gtp_work_func(ts);
+
+    schedule_work(&ts->interrupt_work);
 	return IRQ_HANDLED;
 }
 
@@ -1530,6 +1539,7 @@ static int gtp_request_irq(struct goodix_ts_data *ts)
 				"Failed to request irq %d\n", ts->client->irq);
 			return ret;
 		}
+        INIT_WORK(&ts->interrupt_work, gtp_interrupt_work);
 	} else { /* use delayed workqueue */
 		dev_info(&ts->client->dev, "No hardware irq, use delayed wq\n");
         INIT_DELAYED_WORK(&ts->polling_work, gtp_polling_work);

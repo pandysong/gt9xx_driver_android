@@ -148,6 +148,7 @@ struct goodix_ts_data {
 	/* use pinctrl control int-pin output low or high */
 	struct goodix_pinctrl pinctrl;
 	struct delayed_work polling_work;
+	struct work_struct interrupt_work;
 	struct mutex lock;
 	struct notifier_block ps_notif;
 	struct regulator *vdd_ana;
