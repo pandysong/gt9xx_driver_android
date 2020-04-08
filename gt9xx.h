@@ -22,7 +22,6 @@
 #define _GOODIX_GT9XX_H_
 
 #include <linux/kernel.h>
-#include <linux/hrtimer.h>
 #include <linux/i2c.h>
 #include <linux/input.h>
 #include <linux/module.h>
@@ -146,7 +145,7 @@ struct goodix_ts_data {
 	struct goodix_ts_platform_data *pdata;
 	/* use pinctrl control int-pin output low or high */
 	struct goodix_pinctrl pinctrl;
-	struct hrtimer timer;
+	struct delayed_work polling_work;
 	struct mutex lock;
 	struct notifier_block ps_notif;
 	struct regulator *vdd_ana;

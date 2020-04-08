@@ -618,22 +618,22 @@ static void gtp_work_func(struct goodix_ts_data *ts)
  * Function:
  *	Timer interrupt service routine for polling mode.
  * Input:
- *	timer: timer struct pointer
+ *	work: work struct pointer
  * Output:
  *	Timer work mode.
  * HRTIMER_NORESTART:
  *	no restart mode
  *********************************************************/
-static enum hrtimer_restart gtp_timer_handler(struct hrtimer *timer)
+static void gtp_polling_work(struct work_struct *work)
 {
-	struct goodix_ts_data *ts =
-		container_of(timer, struct goodix_ts_data, timer);
+
+	struct delayed_work *dwork = to_delayed_work(work);
+	struct goodix_ts_data *ts = container_of(dwork, struct goodix_ts_data,
+						 polling_work);
 
 	gtp_work_func(ts);
-	hrtimer_start(&ts->timer, ktime_set(0, (GTP_POLL_TIME + 6) * 1000000),
-		      HRTIMER_MODE_REL);
 
-	return HRTIMER_NORESTART;
+    schedule_delayed_work(&ts->polling_work, msecs_to_jiffies(10));
 }
 
 static irqreturn_t gtp_irq_handler(int irq, void *dev_id)
@@ -1496,8 +1496,8 @@ static int gtp_request_io_port(struct goodix_ts_data *ts)
 
 /*******************************************************
  * Function:
- *	Request interrupt if define irq pin, else use hrtimer
- *	as interrupt source
+ *	Request interrupt if define irq pin, else use
+ *	delayed workqueue
  * Input:
  *	ts: private data.
  * Output:
@@ -1525,14 +1525,11 @@ static int gtp_request_irq(struct goodix_ts_data *ts)
 				"Failed to request irq %d\n", ts->client->irq);
 			return ret;
 		}
-	} else { /* use hrtimer */
-		dev_info(&ts->client->dev, "No hardware irq, use hrtimer\n");
-		hrtimer_init(&ts->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-		ts->timer.function = gtp_timer_handler;
-		hrtimer_start(&ts->timer,
-			      ktime_set(0, (GTP_POLL_TIME + 6) * 1000000),
-			      HRTIMER_MODE_REL);
-		set_bit(HRTIMER_USED, &ts->flags);
+	} else { /* use delayed workqueue */
+		dev_info(&ts->client->dev, "No hardware irq, use delayed wq\n");
+        INIT_DELAYED_WORK(&ts->polling_work, gtp_polling_work);
+
+        schedule_delayed_work(&ts->polling_work, msecs_to_jiffies(1));
 		ret = 0;
 	}
 	return ret;
@@ -2119,7 +2116,7 @@ static int gtp_drv_remove(struct i2c_client *client)
 	if (ts->client->irq)
 		free_irq(client->irq, ts);
 	else
-		hrtimer_cancel(&ts->timer);
+		cancel_delayed_work(&ts->polling_work);
 
 	if (gpio_is_valid(ts->pdata->rst_gpio))
 		gpio_free(ts->pdata->rst_gpio);
